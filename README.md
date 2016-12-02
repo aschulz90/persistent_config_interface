@@ -2,6 +2,12 @@
 
 This is a [MagicMirror](https://github.com/MichMich/MagicMirror) module for making persistent changes to MagicMirrors config file.
 
+##Video:
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/hUUipBgShb4/0.jpg)](https://www.youtube.com/watch?v=hUUipBgShb4)
+
+!The used app is not part of this project and will be released later!
+
 ## Installation
 
 1. Navigate into your MagicMirror's `modules` folder.
