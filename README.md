@@ -29,7 +29,7 @@ var newModule = {"module": "calendar"};
 persistentConfigInterface.addModuleConfig(newModule);
 
 // change an exisiting module
-var moduleIndex = 0; // equals the index of the module in the config.modules array
+var moduleIndex = 0; // equals the index of the module in the persistentConfigInterface.getConfig().modules array
 newModule.position = "top_left";
 persistentConfigInterface.replaceModuleConfig(moduleIndex, newModule);
 
