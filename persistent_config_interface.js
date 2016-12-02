@@ -6,7 +6,8 @@
  */
  
 var modulecounter = 0; 
- 
+
+// copied and modified from Main.js, because not yet public accessible
 function bootstrapModule(module, mObj, callback) {
 	Log.info("Bootstrapping module: " + module.name);
 
@@ -24,6 +25,7 @@ function bootstrapModule(module, mObj, callback) {
 	});
 };
 
+// copied and modified from Main.js, because not yet public accessible
 function getModuleData(moduleData) {
 	var module = moduleData.module;
 
@@ -52,6 +54,7 @@ function getModuleData(moduleData) {
 	};
 }
 
+// copied and modified from Main.js, because not yet public accessible
 function loadModule(module, callback) {
 	
 	if(!module) {
@@ -73,6 +76,7 @@ function loadModule(module, callback) {
 	});
 };
 
+// copied and modified from Main.js, because not yet public accessible
 function createDomObject(module) {
 
 	if (typeof module.data.position === "string") {
@@ -107,6 +111,7 @@ function createDomObject(module) {
 	}
 };
 
+// copied from Main.js, because not yet public accessible
 function selectWrapper(position) {
 	var classes = position.replace("_"," ");
 	var parentWrapper = document.getElementsByClassName(classes);

@@ -96,6 +96,7 @@ function writeConfigToFile(config, callback) {
 	});
 }
 
+// copied and modified from App.js, because not yet public accessible
 function loadModule(module) {
 
 	var elements = module.split("/");
