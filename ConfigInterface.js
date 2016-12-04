@@ -351,6 +351,11 @@ class ConfigInterface {
 		});
 	}
 	
+	/**
+     * Hides a module.
+     * @param {number} index - The index of the module in the module list.
+	 * @param {function} [callback] - The callback to call when finished.
+     */
 	hideModule(index, callback) {
 		
 		this.replaceModuleConfigValue(index, false, "hidden", true, function(){
@@ -361,6 +366,11 @@ class ConfigInterface {
 		}.bind(this));
 	}
 	
+	/**
+     * Shows a module.
+     * @param {number} index - The index of the module in the module list.
+	 * @param {function} [callback] - The callback to call when finished.
+     */
 	showModule(index, callback) {
 		this.replaceModuleConfigValue(index, false, "hidden", null, function(){
 			if(typeof callback === "function") {
