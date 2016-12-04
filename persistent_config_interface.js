@@ -160,7 +160,7 @@ function evaluateNotification(notification, payload) {
 	else if(notification === "CONFIG_INTERFACE_REMOVED") {
 		var module = MM.getModules()[payload];
 		MM.getModules().splice(payload, 1);
-		module.hide(200,null,{"lockString":this.name});
+		module.hide(200,{"lockString":this.name});
 		updateModuleIndices();
 	}
 	else if(notification === "CONFIG_INTERFACE_ADDED") {
@@ -173,6 +173,14 @@ function evaluateNotification(notification, payload) {
 				createDomObject(module);
 			}
 		});
+	}
+	else if(notification === "CONFIG_INTERFACE_MODULE_HIDE") {
+		var module = MM.getModules()[payload];
+		module.hide(200,{"lockString":this.name});
+	}
+	else if(notification === "CONFIG_INTERFACE_MODULE_SHOW") {
+		var module = MM.getModules()[payload];
+		module.show(200,{"lockString":this.name});
 	}
 }
 
@@ -194,12 +202,26 @@ Module.register("persistent_config_interface",{
 	 * 'MODULE_ADD'		-	Add a new module (payload = config of the new module)
 	 * 'MODULE_REMOVE'	-	Remove an exisiting module (payload = index of the module to remove)
 	 * 'MODULE_CHANGE'	-	Change the WHOLE config of a module (payload = {"index": *index of the module to change*, "config": *the new config*})
+	 * 'MODULE_SHOW'	-	Show a module and save it to the config (payload = index of the module to show)
+	 * 'MODULE_HIDE'	-	Hide a module and save it to the config (payload = index of the module to hide)
      */
 	notificationReceived: function(notification, payload) {
 		
-		if(notification === "MODULE_ADD" || notification === "MODULE_REMOVE" || notification === "MODULE_CHANGE") {
+		if(notification === "MODULE_ADD" || 
+				notification === "MODULE_REMOVE" || 
+				notification === "MODULE_CHANGE" ||
+				notification === "MODULE_SHOW" ||
+				notification === "MODULE_HIDE") {
+			
 			console.log("Received notification: " + notification + " (" + JSON.stringify(payload, null, '\t') + ")");
 			this.sendSocketNotification(notification, payload);
+		}
+		else if(notification === "DOM_OBJECTS_CREATED") {
+			MM.getModules().enumerate(function(module) {
+				if(module.config.hidden) {
+					module.hide(0,{"lockString":this.name});
+				}
+			}.bind(this));
 		}
 	},
 	

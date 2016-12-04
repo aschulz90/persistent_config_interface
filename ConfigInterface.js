@@ -194,6 +194,9 @@ class ConfigInterface {
 		}
 	
 		if(isNaN(index)) {
+			if(typeof callback === "function") {
+				callback();
+			}
 			return;
 		}
 		
@@ -245,6 +248,9 @@ class ConfigInterface {
      */
 	replaceModuleConfigValue(index, inRoot, valueKey, newValue, callback) {
 		if(typeof index !== "number" || typeof valueKey !== "string" || !valueKey) {
+			if(typeof callback === "function") {
+				callback();
+			}
 			return;
 		}
 		
@@ -343,6 +349,25 @@ class ConfigInterface {
 				}
 			});
 		});
+	}
+	
+	hideModule(index, callback) {
+		
+		this.replaceModuleConfigValue(index, false, "hidden", true, function(){
+			if(typeof callback === "function") {
+				callback();
+			}
+			this.sendSocketNotification("CONFIG_INTERFACE_MODULE_HIDE", index);
+		}.bind(this));
+	}
+	
+	showModule(index, callback) {
+		this.replaceModuleConfigValue(index, false, "hidden", null, function(){
+			if(typeof callback === "function") {
+				callback();
+			}
+			this.sendSocketNotification("CONFIG_INTERFACE_MODULE_SHOW", index);
+		}.bind(this));
 	}
 }
 

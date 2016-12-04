@@ -39,5 +39,11 @@ module.exports = NodeHelper.create({
 		else if(notification === "MODULE_CHANGE") {
 			persistentConfigInterface.replaceModuleConfig(payload.index, payload.config);
 		}
+		else if(notification === "MODULE_SHOW") {
+			persistentConfigInterface.showModule(payload);
+		}
+		else if(notification === "MODULE_HIDE") {
+			persistentConfigInterface.hideModule(payload);
+		}
     }
 });
