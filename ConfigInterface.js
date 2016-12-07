@@ -7,65 +7,7 @@ var server = require("http").Server(app);
 var io = require("socket.io")(server);
 
 var defaultModules = require("./../default/defaultmodules.js");
-
-// Look if the config ind config.js is parseable and if not, fix it by replacing the config with a newly serialized one
-function testAndFixConfigFile() {
-	fs.readFile(configFilename, 'utf8', function (err,data) {
-		if (err) {
-			return console.log(err);
-		}
-		
-		var regex = new RegExp("((?:\\t|\\n|\\r|.)*?)({(?:\\t|\\n|\\r|.)*?})(;(?:\\t|\\n|\\r|.)*)");
-		var index = data.search(regex);
-		
-		if(index >= 0) {
-			var result = data.replace(regex, "$2");
-			// remove comments
-			result = result.replace(new RegExp("\\/\\*[\\s\\S]*?\\*\\/|([^:]|^)\\/\\/.*", 'g'), "$1");
-			
-			try {
-				result = JSON.parse(result);
-			}
-			catch(e) {
-				console.log("Failed to parse JSON " + e + "\nReplacing with valid one");
-				// not valid json, so make it valid
-				var configObject = require("./../../config/config.js");
-				
-				fs.writeFile(configFilename, data.replace(regex, "$1" + JSON.stringify(configObject, null, '\t') + "$3"), 'utf8', function (err) {
-					if (err) {
-						return console.log(err);
-					}
-				});
-			}
-		}
-	});
-}
-
-function readConfigFromFile(callback) {
-	fs.readFile(configFilename, 'utf8', function (err,data) {
-		if (err) {
-			return console.log(err);
-		}
-		
-		var regex = new RegExp("((?:\\t|\\n|\\r|.)*?)({(?:\\t|\\n|\\r|.)*?})(;(?:\\t|\\n|\\r|.)*)");
-		var index = data.search(regex);
-		console.log("found config at: " + index);
-		
-		if(index >= 0) {
-			var result = data.replace(regex, "$2");
-			// remove comments
-			result = result.replace(new RegExp("\\/\\*[\\s\\S]*?\\*\\/|([^:]|^)\\/\\/.*", 'g'), "$1");
-			result = JSON.parse(result);
-			
-			if(typeof callback === "function") {
-				callback(result);
-			}
-		}
-		else {
-			throw "Config not found in file!";
-		}
-	});
-}
+var toSource = require('./tosource.js')
 
 function writeConfigToFile(config, callback) {
 	fs.readFile(configFilename, 'utf8', function (err,data) {
@@ -80,7 +22,7 @@ function writeConfigToFile(config, callback) {
 		
 		if(index >= 0) {
 			
-			fs.writeFile(configFilename, data.replace(regex, "$1" + JSON.stringify(config, null, '\t') + "$3"), 'utf8', function (err) {
+			fs.writeFile(configFilename, data.replace(regex, "$1" + toSource(config, null, '\t') + "$3"), 'utf8', function (err) {
 				if (err) {
 					return console.log(err);
 				}
@@ -96,7 +38,7 @@ function writeConfigToFile(config, callback) {
 	});
 }
 
-// copied and modified from App.js, because not yet public accessible
+// copied and modified from App.js, because not yet publicly accessible
 function loadModule(module) {
 
 	var elements = module.split("/");
@@ -139,6 +81,12 @@ function loadModule(module) {
 	return null;
 }
 
+function getConfig() {
+	// invalidate cache to always get the latest changes in file
+	delete require.cache[require.resolve(configFilename)]
+	return require(configFilename);
+}
+
 class ConfigInterface {	
 	
 	constructor(configInterface) {
@@ -158,8 +106,6 @@ class ConfigInterface {
 				helper.start();
 			}
 		}
-		
-		testAndFixConfigFile();
 	}
 	
 	/**
@@ -172,11 +118,11 @@ class ConfigInterface {
 	}
 	
 	/**
-     * Return the config object via require(..)
+     * Returns the current config object
      * @return {object} The initial config
      */
 	getConfig() {
-		return require(configFilename);
+		return getConfig();
 	}
 	
 	/**
@@ -202,38 +148,66 @@ class ConfigInterface {
 		
 		var self = this;
 		
-		readConfigFromFile(function (result) {
+		var currentConfig = getConfig();
+		var module = currentConfig.modules[index];
+		
+		if(module) {
+			if(config) {
+				// replace
+				currentConfig.modules[index] = JSON.parse(config);
+			}
+			else {
+				// remove
+				currentConfig.modules.splice(index, 1);
+			}
 			
-			var module = result.modules[index];
-			
-			if(module) {
+			writeConfigToFile(currentConfig, function () {
 				if(config) {
-					// replace
-					result.modules[result.modules.indexOf(module)] = JSON.parse(config);
+					console.log("Send socket notification CONFIG_INTERFACE_REPLACED at " + index + " with " + config);
+					var payload = {
+						"index" : index,
+						"config" : JSON.parse(config)
+					}
+					self.sendSocketNotification("CONFIG_INTERFACE_REPLACED", payload);
 				}
 				else {
-					// remove
-					result.modules.splice(result.modules.indexOf(module), 1);
+					console.log("Send socket notification CONFIG_INTERFACE_REMOVED at " + index + " with " + config);
+					self.sendSocketNotification("CONFIG_INTERFACE_REMOVED", index);
 				}
 				
-				writeConfigToFile(result, function () {
-					if(config) {
-						console.log("Send socket notification CONFIG_INTERFACE_REPLACED at " + index + " with " + config);
-						var payload = {
-							"index" : index,
-							"config" : JSON.parse(config)
-						}
-						self.sendSocketNotification("CONFIG_INTERFACE_REPLACED", payload);
-					}
-					else {
-						console.log("Send socket notification CONFIG_INTERFACE_REMOVED at " + index + " with " + config);
-						self.sendSocketNotification("CONFIG_INTERFACE_REMOVED", index);
-					}
-					
-					if(typeof callback === "function") {
-						callback();
-					}
-				});
+				if(typeof callback === "function") {
+					callback();
+				}
+			});
+		}
+	}
+	
+	/**
+     * Replaces the config of the main app with new values.
+	 * @param {object} config - The new config values.
+	 * @param {function} [callback] - The callback to call when finished.
+     */
+	replaceConfigValues(config, callback) {
+		console.log("Replace root config values with " + JSON.stringify(config,null,'\t'));
+		
+		var self = this;
+		
+		var currentConfig = getConfig(); 
+		config = JSON.parse(config);
+		
+		currentConfig.port = config.port;
+		currentConfig.kioskmode = config.kioskmode;
+		currentConfig.language = config.language;
+		currentConfig.timeFormat = config.timeFormat;
+		currentConfig.units = config.units;
+		
+		writeConfigToFile(currentConfig, function () {
+			
+			console.log("Send socket notification CONFIG_INTERFACE_CONFIG_CHANGED with " + JSON.stringify(config,null,'\t'));
+			self.sendSocketNotification("CONFIG_INTERFACE_CONFIG_CHANGED", config);
+			
+			if(typeof callback === "function") {
+				callback();
 			}
 		});
 	}
@@ -256,49 +230,47 @@ class ConfigInterface {
 		
 		var self = this;
 		
-		readConfigFromFile(function (result) {
-				
-			var module = result.modules[index];
-			
-			if(module) {
-				if(newValue === null || newValue === undefined) {
-					// remove
-					if(inRoot) {
-						delete module[valueKey];
-					}
-					else {
-						delete module.config[valueKey];
-					}
+		var currentConfig = getConfig();
+		var module = currentConfig.modules[index];
+		
+		if(module) {
+			if(newValue === null || newValue === undefined) {
+				// remove
+				if(inRoot) {
+					delete module[valueKey];
 				}
 				else {
-					// replace
-					if(inRoot) {
-						module[valueKey] = newValue;
-					}
-					else {
-						module.config[valueKey] = newValue;
-					}
+					delete module.config[valueKey];
+				}
+			}
+			else {
+				// replace
+				if(inRoot) {
+					module[valueKey] = newValue;
+				}
+				else {
+					module.config[valueKey] = newValue;
+				}
+			}
+			
+			writeConfigToFile(currentConfig, function () {
+				
+				var payload = {};
+				payload['module'] = module.module;
+				payload[valueKey] = newValue;
+				
+				if(newValue === null || newValue === undefined) {
+					self.sendSocketNotification("CONFIG_INTERFACE_REMOVED_VALUE", payload);
+				}
+				else {
+					self.sendSocketNotification("CONFIG_INTERFACE_REPLACED_VALUE", payload);
 				}
 				
-				writeConfigToFile(result, function () {
-					
-					var payload = {};
-					payload['module'] = module.module;
-					payload[valueKey] = newValue;
-					
-					if(newValue === null || newValue === undefined) {
-						self.sendSocketNotification("CONFIG_INTERFACE_REMOVED_VALUE", payload);
-					}
-					else {
-						self.sendSocketNotification("CONFIG_INTERFACE_REPLACED_VALUE", payload);
-					}
-					
-					if(typeof callback === "function") {
-						callback();
-					}
-				});
-			}			
-		});
+				if(typeof callback === "function") {
+					callback();
+				}
+			});
+		}
 	}
 	
 	/**
@@ -335,19 +307,17 @@ class ConfigInterface {
 		
 		var self = this;
 		
-		readConfigFromFile(function (result) {
-			
-			var newConfig = JSON.parse(config);
-			result.modules.push(newConfig);
+		var currentConfig = getConfig();
+		config = JSON.parse(config);
+		currentConfig.modules.push(config);
 
-			writeConfigToFile(result, function () {
-				self.addModule(newConfig.module);
-				self.sendSocketNotification("CONFIG_INTERFACE_ADDED", JSON.parse(config));
-				
-				if(typeof callback === "function") {
-					callback();
-				}
-			});
+		writeConfigToFile(currentConfig, function () {
+			self.addModule(config.module);
+			self.sendSocketNotification("CONFIG_INTERFACE_ADDED", config);
+			
+			if(typeof callback === "function") {
+				callback();
+			}
 		});
 	}
 	
