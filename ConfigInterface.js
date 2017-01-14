@@ -195,11 +195,31 @@ class ConfigInterface {
 		var currentConfig = getConfig(); 
 		config = JSON.parse(config);
 		
-		currentConfig.port = config.port;
-		currentConfig.kioskmode = config.kioskmode;
-		currentConfig.language = config.language;
-		currentConfig.timeFormat = config.timeFormat;
-		currentConfig.units = config.units;
+		if(config.port)
+			currentConfig.port = config.port;
+		
+		if(config.address)
+			currentConfig.address = config.address;
+		
+		if(config.ipWhitelist)
+			currentConfig.ipWhitelist = config.ipWhitelist;
+		
+		if(config.zoom)
+			currentConfig.zoom = config.zoom;
+		
+		if(config.language)
+			currentConfig.language = config.language;
+		
+		
+		if(config.timeFormat)
+			currentConfig.timeFormat = config.timeFormat;
+		
+		
+		if(config.units)
+			currentConfig.units = config.units;
+		
+		if(config.electronOptions)
+			currentConfig.electronOptions = config.electronOptions;
 		
 		writeConfigToFile(currentConfig, function () {
 			
