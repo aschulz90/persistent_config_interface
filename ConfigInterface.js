@@ -10,21 +10,25 @@ var defaultModules = require("./../default/defaultmodules.js");
 var toSource = require('./tosource.js')
 
 function writeConfigToFile(config, callback) {
+	
 	fs.readFile(configFilename, 'utf8', function (err,data) {
-		
+		console.log("Read: " + typeof data);
 		if (err) {
+			console.log("Error reading config")
+			if(typeof callback === "function") {
+				callback();
+			}
 			return console.log(err);
 		}
 		
-		var regex = new RegExp("((?:\\t|\\n|\\r|.)*?)({(?:\\t|\\n|\\r|.)*?})(;(?:\\t|\\n|\\r|.)*)");
+		var regex = new RegExp("((?:\\t|\\n|\\r|.)*?)({(?:\\t|\\n|\\r|.)*?}(?:\\t|\\n|\\r|.)*?)(\\/\*\\*(?:\\t|\\n|\\r|.)*)");
 		var index = data.search(regex);
 		console.log("found config at: " + index);
 		
 		if(index >= 0) {
-			
 			fs.writeFile(configFilename, data.replace(regex, "$1" + toSource(config, null, '\t') + "$3"), 'utf8', function (err) {
 				if (err) {
-					return console.log(err);
+					console.log(err);
 				}
 				
 				if(typeof callback === "function") {
@@ -151,13 +155,17 @@ class ConfigInterface {
 		var currentConfig = getConfig();
 		var module = currentConfig.modules[index];
 		
+		console.log(module);
+		
 		if(module) {
 			if(config) {
 				// replace
+				console.log("Replace module config");
 				currentConfig.modules[index] = JSON.parse(config);
 			}
 			else {
 				// remove
+				console.log("Remove module config");
 				currentConfig.modules.splice(index, 1);
 			}
 			
@@ -179,6 +187,11 @@ class ConfigInterface {
 					callback();
 				}
 			});
+		}
+		else {
+			if(typeof callback === "function") {
+				callback();
+			}
 		}
 	}
 	
